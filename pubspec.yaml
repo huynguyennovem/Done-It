@@ -29,6 +29,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.3
   flutter_bloc: ^0.18.2
+  sembast: ^2.4.4+3
+  path_provider: ^0.4.1   #library for getting application directory path
+  equatable: ^0.2.0       #library simplifying object equality implementation
 
 dev_dependencies:
   flutter_test:

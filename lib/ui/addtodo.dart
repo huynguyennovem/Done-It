@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todoapp/bloc/get_user_bloc.dart';
+import 'package:todoapp/bloc/add_todo_bloc.dart';
 import 'package:todoapp/entity/todo.dart';
+import 'package:todoapp/entity/user.dart';
 import 'package:todoapp/event/todo_event.dart';
-import 'package:todoapp/state/get_todo_state.dart';
+import 'package:todoapp/state/add_todo_state.dart';
 
-void main() {
-  runApp(MyApp());
-}
+class ListTodo extends StatelessWidget {
 
-class MyApp extends StatelessWidget {
+  final User user;
+  ListTodo({Key key, this.user}) : super(key: key);
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -31,14 +32,12 @@ class MyApp extends StatelessWidget {
         // closer together (more dense) than on mobile platforms.
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: ListTodoPage(user: user,),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
+class ListTodoPage extends StatefulWidget {
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
   // how it looks.
@@ -48,26 +47,28 @@ class MyHomePage extends StatefulWidget {
   // used by the build method of the State. Fields in a Widget subclass are
   // always marked "final".
 
-  final String title;
+  final User user;
+
+  ListTodoPage({Key key, this.user}) : super(key: key);
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _ListTodoPageState createState() => _ListTodoPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _ListTodoPageState extends State<ListTodoPage> {
 
-  GetTodoBloc _getTodoBloc;
+  AddTodoBloc _addTodoBloc;
 
   @override
   void initState() {
     super.initState();
-    _getTodoBloc = new GetTodoBloc();
+    _addTodoBloc = new AddTodoBloc();
   }
 
   @override
   Widget build(BuildContext context) {
 
-    _getTodoBloc.dispatch(GetTodoEvent());
+    _addTodoBloc.dispatch(AddTodoEvent());
 
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
@@ -76,23 +77,23 @@ class _MyHomePageState extends State<MyHomePage> {
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return BlocProvider(
-      builder: (context) => _getTodoBloc,
+      builder: (context) => _addTodoBloc,
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Demo BLoC"),
+          title: Text("Add new task"),
           centerTitle: true,
         ),
         body: BlocBuilder(
-          bloc: _getTodoBloc,
-          builder: (context, GetTodoState state) {
-            if (state is GetTodoUnInitial)
+          bloc: _addTodoBloc,
+          builder: (context, AddTodoState state) {
+            if (state is AddTodoUnInitial)
               return Container();
-            else if (state is GetTodoLoading)
+            else if (state is AddTodoLoading)
               return Center(child: CircularProgressIndicator());
-            else if (state is GetTodoSuccess)
-              return _buildListUser(state.todos);
+            else if (state is AddTodoSuccess)
+              return _buildListUser(state.todo);
             else {
-              return Center(child: Text("Error"));
+              return Center(child: Text("No task was found!"));
             }
           },
         ),
@@ -100,26 +101,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildListUser(List<Todo> todos) {
-    return ListView.separated(
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: Icon(Icons.person, color: Colors.black,size: 48),
-            title: Text(
-              todos[index].username,
-              style: TextStyle(color: Colors.black, fontSize: 16),
-            ),
-            subtitle: Text(
-              todos[index].taskname,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          );
-        },
-        separatorBuilder: (context, index) {
-          return Divider(
-            height: 1,
-          );
-        },
-        itemCount: todos.length);
+  Widget _buildListUser(Todo todo) {
+    return Center(child: Text(todo.taskname));
   }
 }
