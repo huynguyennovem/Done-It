@@ -1,27 +1,29 @@
 
 
 
-class Todo {
+import 'package:equatable/equatable.dart';
+
+class Todo extends Equatable {
 
   int id;
-  String username, taskname, datecreate;
+  String username, taskname, deadline;
   bool hasDone;
 
-  Todo(this.username, this.taskname, this.datecreate, this.hasDone);
+  Todo(this.username, this.taskname, this.deadline, this.hasDone): super([username, taskname, deadline, hasDone]);
 
   @override
   String toString() {
-    return 'Todo{id: $id, username: $username, taskname: $taskname, datecreate: $datecreate, hasDone: $hasDone}';
+    return 'Todo{id: $id, username: $username, taskname: $taskname, datecreate: $deadline, hasDone: $hasDone}';
   }
 
   Map<String, dynamic> toMap() {
-    return {"username": username, "taskname": taskname, "hasDone": hasDone,"datecreate":datecreate};
+    return {"username": username, "taskname": taskname, "hasDone": hasDone,"datecreate":deadline};
   }
 
   Todo.fromMap(Map<String, dynamic> map) {
-    username = map["username"];
-    taskname: map["taskname"];
-    datecreate: map["datecreate"];
-    hasDone: map["hasDone"];
+    this.username = map["username"];
+    taskname = map["taskname"];
+    deadline = map["datecreate"];
+    hasDone = map["hasDone"];
   }
 }

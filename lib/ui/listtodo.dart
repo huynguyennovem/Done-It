@@ -1,120 +1,76 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:todoapp/bloc/get_todo_bloc.dart';
+import 'package:todoapp/db/tododao.dart';
 import 'package:todoapp/entity/todo.dart';
-import 'package:todoapp/entity/user.dart';
-import 'package:todoapp/event/todo_event.dart';
-import 'package:todoapp/state/get_todo_state.dart';
+import 'package:todoapp/bloc/event/todo_event.dart';
+import 'package:todoapp/bloc/state/todo_state.dart';
+import 'package:todoapp/ui/createtask.dart';
 
-class ListTodo extends StatelessWidget {
-
-  final User user;
-  ListTodo({Key key, this.user}) : super(key: key);
-
-  // This widget is the root of your application.
+class ListTodoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Todo app',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-        // This makes the visual density adapt to the platform that you run
-        // the app on. For desktop platforms, the controls will be smaller and
-        // closer together (more dense) than on mobile platforms.
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return BlocProvider<TodoBloc>(
+        create: (context) => TodoBloc(TodoDao())..add(QueryTodoEvent()),
+        child: ListTodoPageful());
+  }
+}
+
+class ListTodoPageful extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() {
+    return ListTodoState();
+  }
+}
+
+class ListTodoState extends State<ListTodoPageful> {
+  TodoBloc _todoBloc;
+
+  @override
+  Widget build(BuildContext context) {
+    _todoBloc = BlocProvider.of<TodoBloc>(
+        context); // get todoBloc instance from BlocProvider above
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("List tasks"),
+        centerTitle: true,
       ),
-      home: ListTodoPage(user: user,),
-    );
-  }
-}
-
-class ListTodoPage extends StatefulWidget {
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final User user;
-
-  ListTodoPage({Key key, this.user}) : super(key: key);
-
-  @override
-  _ListTodoPageState createState() => _ListTodoPageState();
-}
-
-class _ListTodoPageState extends State<ListTodoPage> {
-
-  GetTodoBloc _getTodoBloc;
-
-  @override
-  void initState() {
-    super.initState();
-    _getTodoBloc = new GetTodoBloc();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-
-    _getTodoBloc.dispatch(GetTodoEvent());
-
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return BlocProvider(
-      builder: (context) => _getTodoBloc,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text("List tasks"),
-          centerTitle: true,
-        ),
-        body: BlocBuilder(
-          bloc: _getTodoBloc,
-          builder: (context, GetTodoState state) {
-            if (state is GetTodoUnInitial)
-              return Container();
-            else if (state is GetTodoLoading)
-              return Center(child: CircularProgressIndicator());
-            else if (state is GetTodoSuccess)
-              return _buildListUser(state.todos);
-            else {
-              return Center(child: Text("No task was found!"));
-            }
-          },
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          //Navigator.pushNamed(context, "/add", arguments: null);
+          Navigator.push(
+              context,
+              CupertinoPageRoute(
+                  builder: (context) => BlocProvider.value(
+                      value: _todoBloc, child: CreateTaskPage())));
+        },
+        child: Icon(Icons.add),
+      ),
+      body: BlocConsumer<TodoBloc, TodoStates>(
+        listener: (context, state) {
+          //print("Current state $state");
+        },
+        builder: (context, state) {
+//          print("state: " + state.props.length.toString());
+//          print("state toString: " + state.toString());
+          if (state is LoadingTodoState)
+            return Center(child: CircularProgressIndicator());
+          else if (state is LoadedTodoState) {
+            //print("List data length : ${state.list.length}");
+            return _buildListUser(state.list, context);
+          } else {
+            return Center(child: Text("No task was found!"));
+          }
+        },
       ),
     );
   }
 
-  Widget _buildListUser(List<Todo> todos) {
+  Widget _buildListUser(List<Todo> todos, BuildContext context) {
     return ListView.separated(
         itemBuilder: (context, index) {
-          return ListTile(
-            leading: Icon(Icons.person, color: Colors.black,size: 48),
-            title: Text(
-              todos[index].username,
-              style: TextStyle(color: Colors.black, fontSize: 16),
-            ),
-            subtitle: Text(
-              todos[index].taskname,
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          );
+          return _buildListTile(todos[index], context);
         },
         separatorBuilder: (context, index) {
           return Divider(
@@ -122,5 +78,80 @@ class _ListTodoPageState extends State<ListTodoPage> {
           );
         },
         itemCount: todos.length);
+  }
+
+  Widget _buildListTile(Todo todo, BuildContext context) {
+    return ListTile(
+      title: todo.hasDone
+          ? Text(
+              todo.taskname,
+              style: TextStyle(
+                  decoration: TextDecoration.lineThrough,
+                  decorationColor: Colors.blue,
+                  color: Colors.blue),
+            )
+          : Text(todo.taskname),
+      leading: GestureDetector(
+        onTap: () {
+          //toggle task bloc.state
+          if (todo.hasDone) {
+            todo.hasDone = false;
+          } else {
+            todo.hasDone = true;
+          }
+          //update item
+          _todoBloc.add(UpdateTodoEvent(todo));
+        },
+        child: Container(
+          child: todo.hasDone
+              ? Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.blue,
+                )
+              : Icon(Icons.radio_button_unchecked),
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    CupertinoPageRoute(
+                        builder: (context) => BlocProvider.value(
+                            value: _todoBloc,
+                            child: CreateTaskPage(
+                              todo: todo,
+                            ))));
+              }),
+          IconButton(
+              icon: Icon(Icons.delete_outline),
+              onPressed: () {
+                //delete item
+                _todoBloc.add(DeleteTodoEvent(todo.id));
+              }),
+        ],
+      ),
+//      onTap: () {
+//        //Navigator.pushNamed(context, "/add", arguments: todo);
+//        Navigator.push(
+//            context,
+//            CupertinoPageRoute(
+//                builder: (context) => BlocProvider.value(
+//                    value: _todoBloc, child: CreateTaskPage(todo: todo,))));
+//      },
+      onLongPress: () {
+        //toggle task bloc.state
+        if (todo.hasDone) {
+          todo.hasDone = false;
+        } else {
+          todo.hasDone = true;
+        }
+        //update item
+        _todoBloc.add(UpdateTodoEvent(todo));
+      },
+    );
   }
 }

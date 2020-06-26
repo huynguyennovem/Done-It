@@ -1,34 +1,45 @@
-
 import 'package:bloc/bloc.dart';
+import 'package:todoapp/db/tododao.dart';
 import 'package:todoapp/entity/todo.dart';
-import 'package:todoapp/event/todo_event.dart';
-import 'package:todoapp/state/get_todo_state.dart';
+import 'package:todoapp/bloc/event/todo_event.dart';
+import 'package:todoapp/bloc/state/todo_state.dart';
 
-class GetTodoBloc extends Bloc<TodoEvent, GetTodoState> {
+class TodoBloc extends Bloc<TodoEvent, TodoStates> {
+  final TodoDao _todoDao;
+  int tdlCount = 0;
+
+  TodoBloc(this._todoDao);
 
   @override
-  GetTodoState get initialState => GetTodoUnInitial();
+  TodoStates get initialState => LoadingTodoState();
 
   @override
-  Stream<GetTodoState> mapEventToState(TodoEvent event) async*{
-    // to notify that is loading
-    yield GetTodoLoading();
-    // if you have multiple event
-    if(event is GetTodoEvent){
-      yield GetTodoSuccess(listUsers());
+  Stream<TodoStates> mapEventToState(TodoEvent event) async* {
+    if (event is AddTodoEvent) {
+      Todo todo = Todo(event.username, event.taskname, event.datecreate, event.hasDone);
+      await _todoDao.insert(todo);
+
+      add(QueryTodoEvent());
+    } else if (event is UpdateTodoEvent) {
+      await _todoDao.update(event.todo);
+      //await Future.delayed(Duration(seconds: 1));
+
+      add(QueryTodoEvent());
+    } else if (event is DeleteTodoEvent) {
+      await _todoDao.delete(event.id);
+
+      add(QueryTodoEvent());
+    } else if (event is QueryTodoEvent) {
+      yield LoadingTodoState();
+      //await Future.delayed(Duration(seconds: 1));
+
+      final tdl = await _todoDao.getAllSortedByTimeStamp();
+      print("List todo size: " + tdl.length.toString());
+      if (tdl != null && tdl.length == 0) {
+        yield EmptyTodoState();
+      } else {
+        yield LoadedTodoState(tdl);
+      }
     }
-    // if have error you can yield GetUsersError state
   }
-
-  List<Todo> listUsers() {
-    List<Todo> todos = List();
-    todos.add(Todo("huynq", "fixbug 1", "2020-06-01", false));
-    todos.add(Todo("huynq", "fixbug 2", "2020-06-01", false));
-    todos.add(Todo("huynq", "fixbug 3", "2020-06-01", false));
-    todos.add(Todo("huynq", "fixbug 4", "2020-06-01", false));
-    todos.add(Todo("huynq", "fixbug 5", "2020-06-01", false));
-    todos.add(Todo("huynq", "fixbug 6", "2020-06-01", false));
-    return todos;
-  }
-
 }

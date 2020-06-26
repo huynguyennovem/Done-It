@@ -1,8 +1,8 @@
-import 'dart:html';
-
 import 'package:flutter/material.dart';
+import 'package:todoapp/ui/createtask.dart';
 import 'package:todoapp/ui/listtodo.dart';
 import 'package:todoapp/util/constant.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(Login());
@@ -17,7 +17,11 @@ class Login extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: LoginPage(),
+      routes: {
+        '/': (context) => LoginPage(),
+        '/list': (context) => ListTodoPage(),
+        '/add': (context) => CreateTaskPage(),
+      },
     );
   }
 }
@@ -33,19 +37,33 @@ class _LoginState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  bool _passwordVisible = false;
+  bool _passwordVisible = true;
+
+  @override
+  void initState() {
+    _emailController.text = Constant().EMAIL;
+    _passController.text = Constant().PASS;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Login"),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Container(
-              padding: EdgeInsets.all(16.0), child: _buildMainLayout()),
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(new FocusNode());
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text("Login"),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            child: Container(
+                alignment: Alignment.center,
+                padding: EdgeInsets.all(16.0),
+                child: _buildMainLayout()),
+          ),
         ),
       ),
     );
@@ -137,7 +155,7 @@ class _LoginState extends State<LoginPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 22.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   RaisedButton(
                     child: Padding(
@@ -149,10 +167,11 @@ class _LoginState extends State<LoginPage> {
                     onPressed: () {
                       // Validate returns true if the form is valid, or false
                       if (_formKey.currentState.validate()) {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => ListTodo()));
+                        _saveCredential();
+//                        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) =>
+//                            ListTodo()), (Route<dynamic> route) => false);
+                        Navigator.pushNamedAndRemoveUntil(
+                            context, "/list", (r) => false);
                       }
                     },
                   )
@@ -163,5 +182,12 @@ class _LoginState extends State<LoginPage> {
         ],
       ),
     );
+  }
+
+  _saveCredential() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    print('Login as: ' + _emailController.toString());
+    await prefs.setString('login_email', _emailController.toString());
+    await prefs.setString('login_pass', _passController.toString());
   }
 }
