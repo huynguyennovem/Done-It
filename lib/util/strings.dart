@@ -1,0 +1,33 @@
+class Strings {
+  static const String appName = "Done It";
+  static const String login = "Login";
+  static const String email = "Email";
+  static const String password = "Password";
+  static const String emailRequired = "Email is required";
+  static const String emailWrongFormat = "Email is wrong format";
+  static const String loginWrongInfo = "Login info is wrong";
+  static const String enterPassword = "Enter your password";
+  static const String passwordRequired = "Password is required";
+  static const String passwordTooShort = "Password is too short";
+  static const String signInWithGoogle = "Sign in with Google";
+  static const String signInWithFacebook = "Sign in with Facebook";
+  static const String signInWithEmail = "Sign in with Email";
+  static const String allTasks = "All tasks";
+  static const String settings = "Settings";
+  static const String logout = "Logout";
+  static const String noTaskFound = "No task was found!";
+  static const String yourTasks = "Your tasks";
+  static const String addNewTask = "Add new task";
+  static const String taskName = "Task name";
+  static const String enterTaskName = "Enter task name";
+  static const String deadline = "Deadline";
+  static const String selectDate = "Select date";
+  static const String selectTime = "Select time";
+  static const String status = "Status";
+  static const String save = "SAVE";
+  static const String cancel = "CANCEL";
+  static const String taskNameRequired = "Task name is required";
+  static const String deadlineRequired = "Deadline is required";
+  static const String currentTasks = "Current tasks";
+  static const String doneTasks = "Done tasks";
+}

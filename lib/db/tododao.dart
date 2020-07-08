@@ -1,11 +1,8 @@
-
-
 import 'package:sembast/sembast.dart';
 import 'package:todoapp/db/dbhelper.dart';
 import 'package:todoapp/entity/todo.dart';
 
 class TodoDao {
-
   static const String TODO_STORE_NAME = "todo_Store";
 
   //create store, passing the store name as an argument
@@ -13,18 +10,18 @@ class TodoDao {
 
   //get the db from the AppDatabase class. this db object will
   //be used through out the app to perform CRUD operations
-  Future<Database> get _db  async=> await DBHelper.instance.database;
+  Future<Database> get _db async => await DBHelper.instance.database;
 
   //insert _todo to store
   Future insert(Todo todo) async {
-    await _todoStore.add( await _db, todo.toMap());
+    await _todoStore.add(await _db, todo.toMap());
   }
 
   //update _todo item in db
-  Future update(Todo todo) async{
+  Future update(Todo todo) async {
     // finder is used to filter the object out for update
     final finder = Finder(filter: Filter.byKey(todo.id));
-    await _todoStore.update( await _db, todo.toMap(),finder: finder);
+    await _todoStore.update(await _db, todo.toMap(), finder: finder);
   }
 
   //delete _todo item
@@ -38,10 +35,9 @@ class TodoDao {
 
   //get all listem from the db
   Future<List<Todo>> getAllSortedByTimeStamp() async {
-
     //sort the _todo item in order of their timestamp
     //that is entry time
-    final finder = Finder(sortOrders: [SortOrder("timeStamp",false)]);
+    final finder = Finder(sortOrders: [SortOrder("timeStamp", false)]);
 
     //get the data
     final snapshot = await _todoStore.find(
@@ -59,5 +55,4 @@ class TodoDao {
       return todo;
     }).toList();
   }
-
 }

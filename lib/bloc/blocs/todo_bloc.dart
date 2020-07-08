@@ -34,7 +34,7 @@ class TodoBloc extends Bloc<TodoEvent, TodoStates> {
       //await Future.delayed(Duration(seconds: 1));
 
       final tdl = await _todoDao.getAllSortedByTimeStamp();
-      print("List todo size: " + tdl.length.toString());
+      //print("List to do size: " + tdl.length.toString());
       if (tdl != null && tdl.length == 0) {
         yield EmptyTodoState();
       } else {

@@ -1,14 +1,21 @@
+import 'dart:typed_data';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:todoapp/bloc/blocs/todo_bloc.dart';
 import 'package:todoapp/bloc/event/todo_event.dart';
-import 'package:todoapp/bloc/get_todo_bloc.dart';
-import 'package:todoapp/bloc/state/todo_state.dart';
+import 'package:todoapp/entity/ReceivedNotification.dart';
 import 'package:todoapp/entity/todo.dart';
+import 'package:todoapp/entity/user.dart';
+import 'package:todoapp/local/pref/pref.dart';
+import 'package:todoapp/util/strings.dart';
+import 'package:todoapp/util/utilities.dart';
+import 'package:rxdart/subjects.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final Todo todo;
@@ -24,18 +31,115 @@ class _CreatePageState extends State<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final _textTasknameEditingController = TextEditingController();
   final _textDatetimeController = TextEditingController();
-  String _email;
   bool _hasDone = false;
+  User _savedUser;
+
+  // notification
+  final BehaviorSubject<ReceivedNotification> didReceiveLocalNotificationSubject = BehaviorSubject<ReceivedNotification>();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final BehaviorSubject<String> selectNotificationSubject = BehaviorSubject<String>();
+  NotificationAppLaunchDetails notificationAppLaunchDetails;
+
+  Future<void> _init() async {
+    notificationAppLaunchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    var initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
+    // Note: permissions aren't requested here just to demonstrate that can be done later using the `requestPermissions()` method
+    // of the `IOSFlutterLocalNotificationsPlugin` class
+    var initializationSettingsIOS = IOSInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+        onDidReceiveLocalNotification:(int id, String title, String body, String payload) async {
+          didReceiveLocalNotificationSubject.add(ReceivedNotification(id: id, title: title, body: body, payload: payload));
+        });
+    var initializationSettings = InitializationSettings(initializationSettingsAndroid, initializationSettingsIOS);
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings, onSelectNotification: (String payload) async {
+      if (payload != null) {
+        debugPrint('notification payload: ' + payload);
+      }
+      selectNotificationSubject.add(payload);
+    });
+  }
+
+  /// Schedules a notification that specifies a different icon, sound and vibration pattern
+  Future<void> _scheduleNotification(String message) async {
+    var scheduledNotificationDateTime =
+        DateTime.now().add(Duration(seconds: 5));
+    var vibrationPattern = Int64List(4);
+    vibrationPattern[0] = 0;
+    vibrationPattern[1] = 1000;
+    vibrationPattern[2] = 5000;
+    vibrationPattern[3] = 2000;
+
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your other channel id',
+        'your other channel name',
+        'your other channel description',
+        //icon: 'app_icon',
+        //sound: RawResourceAndroidNotificationSound('slow_spring_board'),
+        //largeIcon: DrawableResourceAndroidBitmap('app_icon'),
+        vibrationPattern: vibrationPattern,
+        enableLights: true,
+        color: const Color.fromARGB(255, 255, 0, 0),
+        ledColor: const Color.fromARGB(255, 255, 0, 0),
+        ledOnMs: 1000,
+        ledOffMs: 500);
+    var iOSPlatformChannelSpecifics =
+        IOSNotificationDetails(sound: 'slow_spring_board.aiff');
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.schedule(0, Strings.appName, message,
+        scheduledNotificationDateTime, platformChannelSpecifics);
+  }
 
   @override
   void initState() {
     super.initState();
-    _getCredential();
+    _init();
+    _initNotification();
+    _getUser();
     if (widget.todo != null) {
       _textTasknameEditingController.text = widget.todo.taskname;
       _textDatetimeController.text = widget.todo.deadline;
       _hasDone = widget.todo.hasDone;
     }
+  }
+
+  _initNotification() {
+    _requestIOSPermissions();
+    _configureDidReceiveLocalNotificationSubject();
+    _configureSelectNotificationSubject();
+  }
+
+  void _requestIOSPermissions() {
+    flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+  }
+
+  void _configureDidReceiveLocalNotificationSubject() {
+    didReceiveLocalNotificationSubject.stream
+        .listen((ReceivedNotification receivedNotification) async {
+      print("invoked on _configureDidReceiveLocalNotificationSubject " + receivedNotification.toString());
+    });
+  }
+
+  void _configureSelectNotificationSubject() {
+    selectNotificationSubject.stream.listen((String payload) async {
+      print("invoked on _configureSelectNotificationSubject " + payload);
+    });
+  }
+
+  @override
+  void dispose() {
+    didReceiveLocalNotificationSubject.close();
+    selectNotificationSubject.close();
+    super.dispose();
   }
 
   @override
@@ -47,7 +151,7 @@ class _CreatePageState extends State<CreateTaskPage> {
       },
       child: Scaffold(
           appBar: AppBar(
-            title: const Text("Add new task"),
+            title: const Text(Strings.addNewTask),
             centerTitle: true,
             leading: Padding(
               padding: EdgeInsets.only(left: 12),
@@ -79,7 +183,8 @@ class _CreatePageState extends State<CreateTaskPage> {
                   child: TextField(
                 controller: _textTasknameEditingController,
                 decoration: InputDecoration(
-                    labelText: 'Task name', hintText: "Enter task name"),
+                    labelText: Strings.taskName,
+                    hintText: Strings.enterTaskName),
               ))
             ],
           ),
@@ -91,7 +196,7 @@ class _CreatePageState extends State<CreateTaskPage> {
                     enabled: false,
                     controller: _textDatetimeController,
                     decoration: InputDecoration(
-                      labelText: 'Deadline',
+                      labelText: Strings.deadline,
                     ),
                     style: TextStyle(
                         fontWeight: FontWeight.normal, fontSize: 16.0),
@@ -100,7 +205,7 @@ class _CreatePageState extends State<CreateTaskPage> {
                 flex: 1,
                 child: RaisedButton(
                   onPressed: () => {_showDatePicker()},
-                  child: Text('Select date'),
+                  child: Text(Strings.selectDate),
                 ),
               )
             ],
@@ -111,7 +216,7 @@ class _CreatePageState extends State<CreateTaskPage> {
               children: <Widget>[
                 Expanded(
                     flex: 3,
-                    child: Text("Status",
+                    child: Text(Strings.status,
                         style: TextStyle(
                             fontWeight: FontWeight.normal, fontSize: 16.0))),
                 Expanded(
@@ -138,7 +243,7 @@ class _CreatePageState extends State<CreateTaskPage> {
                   RaisedButton(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text("SAVE"),
+                      child: Text(Strings.save),
                     ),
                     color: Colors.blue,
                     textColor: Colors.white,
@@ -146,19 +251,19 @@ class _CreatePageState extends State<CreateTaskPage> {
                       // Validate returns true if the form is valid, or false
                       if (_formKey.currentState.validate()) {
                         if (_textTasknameEditingController.text.isEmpty) {
-                          _showToast("Task name is required!");
+                          Util().showToast(Strings.taskNameRequired);
                         } else if (_textDatetimeController.text.isEmpty) {
-                          _showToast("Deadline is required!");
+                          Util().showToast(Strings.deadlineRequired);
                         } else {
                           if (widget.todo == null) {
                             _todoBloc.add(AddTodoEvent(
-                                username: _email,
+                                username: _savedUser.email,
                                 taskname: _textTasknameEditingController.text,
                                 datecreate: _textDatetimeController.text,
                                 hasDone: _hasDone));
                           } else {
                             var todoupdate = Todo(
-                                _email,
+                                _savedUser.email,
                                 _textTasknameEditingController.text,
                                 _textDatetimeController.text,
                                 _hasDone);
@@ -166,6 +271,8 @@ class _CreatePageState extends State<CreateTaskPage> {
                             _todoBloc.add(UpdateTodoEvent(todoupdate));
                           }
                           _back();
+                          _scheduleNotification(
+                              _textTasknameEditingController.text);
                         }
                       }
                     },
@@ -174,7 +281,7 @@ class _CreatePageState extends State<CreateTaskPage> {
                     child: RaisedButton(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Text("CANCEL"),
+                        child: Text(Strings.cancel),
                       ),
                       color: Colors.red,
                       textColor: Colors.white,
@@ -198,25 +305,49 @@ class _CreatePageState extends State<CreateTaskPage> {
   }
 
   void _showDatePicker() {
-    DatePicker.showDatePicker(context,
+    DatePicker.showDateTimePicker(context,
         showTitleActions: true, onChanged: (date) {}, onConfirm: (date) {
-      _textDatetimeController.text = DateFormat("MM-dd-yyyy").format(date);
+      _textDatetimeController.text = DateFormat("MM-dd-yyyy hh:MM").format(date);
     }, currentTime: DateTime.now(), locale: LocaleType.vi);
   }
 
-  void _showToast(String mess) {
-    Fluttertoast.showToast(
-        msg: mess,
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.amberAccent,
-        textColor: Colors.white,
-        fontSize: 16.0);
+  _getUser() async {
+    _savedUser = await Pref.getUserInfo();
+  }
+}
+
+
+class SecondScreen extends StatefulWidget {
+  SecondScreen(this.payload);
+
+  final String payload;
+
+  @override
+  State<StatefulWidget> createState() => SecondScreenState();
+}
+
+class SecondScreenState extends State<SecondScreen> {
+  String _payload;
+  @override
+  void initState() {
+    super.initState();
+    _payload = widget.payload;
   }
 
-  _getCredential() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _email = prefs.getString("login_email").toString();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Screen with payload: ${(_payload ?? '')}'),
+      ),
+      body: Center(
+        child: RaisedButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: Text('Go back!'),
+        ),
+      ),
+    );
   }
 }
