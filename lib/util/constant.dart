@@ -1,7 +1,7 @@
 
 class Constant {
 
-  static final String EMAIL = "huynq0911@gmail.com";
+  static final String EMAIL = "huynq@gmail.com";
   static final String PASS = "11111111";
 
   static final String LOGIN_EMAIL = "email";
