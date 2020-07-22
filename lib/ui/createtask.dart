@@ -33,6 +33,7 @@ class _CreatePageState extends State<CreateTaskPage> {
   final _textDatetimeController = TextEditingController();
   bool _hasDone = false;
   User _savedUser;
+  DateTime diffTime;
 
   // notification
   final BehaviorSubject<ReceivedNotification> didReceiveLocalNotificationSubject = BehaviorSubject<ReceivedNotification>();
@@ -63,8 +64,6 @@ class _CreatePageState extends State<CreateTaskPage> {
 
   /// Schedules a notification that specifies a different icon, sound and vibration pattern
   Future<void> _scheduleNotification(String message) async {
-    var scheduledNotificationDateTime =
-        DateTime.now().add(Duration(seconds: 5));
     var vibrationPattern = Int64List(4);
     vibrationPattern[0] = 0;
     vibrationPattern[1] = 1000;
@@ -89,7 +88,7 @@ class _CreatePageState extends State<CreateTaskPage> {
     var platformChannelSpecifics = NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.schedule(0, Strings.appName, message,
-        scheduledNotificationDateTime, platformChannelSpecifics);
+        diffTime, platformChannelSpecifics);
   }
 
   @override
@@ -305,10 +304,17 @@ class _CreatePageState extends State<CreateTaskPage> {
   }
 
   void _showDatePicker() {
-    DatePicker.showDateTimePicker(context,
-        showTitleActions: true, onChanged: (date) {}, onConfirm: (date) {
-      _textDatetimeController.text = DateFormat("MM-dd-yyyy hh:MM").format(date);
-    }, currentTime: DateTime.now(), locale: LocaleType.vi);
+    DatePicker.showDateTimePicker(
+        context,
+        minTime: DateTime.now(),
+        showTitleActions: true,
+        onChanged: (date) {},
+        onConfirm: (date) {
+          _textDatetimeController.text = DateFormat("MM-dd-yyyy hh:mm").format(date);
+          diffTime = date;
+        },
+        currentTime: DateTime.now(), locale: LocaleType.vi
+    );
   }
 
   _getUser() async {
@@ -316,38 +322,3 @@ class _CreatePageState extends State<CreateTaskPage> {
   }
 }
 
-
-class SecondScreen extends StatefulWidget {
-  SecondScreen(this.payload);
-
-  final String payload;
-
-  @override
-  State<StatefulWidget> createState() => SecondScreenState();
-}
-
-class SecondScreenState extends State<SecondScreen> {
-  String _payload;
-  @override
-  void initState() {
-    super.initState();
-    _payload = widget.payload;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Second Screen with payload: ${(_payload ?? '')}'),
-      ),
-      body: Center(
-        child: RaisedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text('Go back!'),
-        ),
-      ),
-    );
-  }
-}

@@ -1,11 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import "package:http/http.dart" as http;
+import 'package:todoapp/entity/facebook_user.dart';
 import 'package:todoapp/entity/user.dart';
 import 'package:todoapp/local/pref/pref.dart';
 import 'package:todoapp/util/constant.dart';
 import 'package:todoapp/util/strings.dart';
-import 'dart:convert' show json;
+import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 
 import 'package:todoapp/util/utilities.dart';
 
@@ -25,6 +28,8 @@ GoogleSignIn _googleSignIn = GoogleSignIn(
   ],
 );
 
+final facebookLogin = FacebookLogin();
+
 class _LoginMethodPageState extends State<LoginMethodPage> {
   GoogleSignInAccount _currentUser;
   String _contactText;
@@ -39,7 +44,8 @@ class _LoginMethodPageState extends State<LoginMethodPage> {
       if (_currentUser != null) {
         _contactText = _currentUser.displayName;
         Util().showToast("Hi $_contactText!");
-        User user = User(_currentUser.displayName, _currentUser.email, "", Constant.LOGIN_GG, _currentUser.photoUrl);
+        User user = User(_currentUser.displayName, _currentUser.email, "",
+            Constant.LOGIN_GG, _currentUser.photoUrl);
         print("User info: " + user.toString());
         _saveCredential(user);
         Future.delayed(Duration(seconds: 1), () {
@@ -57,58 +63,82 @@ class _LoginMethodPageState extends State<LoginMethodPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _mainBuildLayout(context);
+    var size = MediaQuery.of(context).size;
+    return _mainBuildLayout(context, size);
   }
 
-  Widget _mainBuildLayout(BuildContext context) {
+  Widget _mainBuildLayout(BuildContext context, Size size) {
     return Scaffold(
       body: Container(
+        width: size.width,
+        height: size.height,
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/bg_loginmethod.jpg"),
             fit: BoxFit.cover,
           ),
         ),
-        alignment: Alignment.bottomCenter,
-        margin: const EdgeInsets.symmetric(vertical: 15.0),
-        child: SingleChildScrollView(
-          child: Container(
-              alignment: Alignment.bottomCenter,
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                children: <Widget>[
-                  //_test(),
-                  _buildButton(
-                      Image(
-                          image: AssetImage("assets/images/ic_google.png"),
-                          height: 30.0,
-                          width: 40.0),
-                      Text(Strings.signInWithGoogle,
-                          style: TextStyle(fontSize: 16, color: Colors.white)),
-                      Colors.blue,
-                      () => {_loginWithGoogle()}),
-                  _buildButton(
-                      Image(
-                          image: AssetImage("assets/images/ic_facebook.png"),
-                          height: 30.0,
-                          width: 40.0),
-                      Text(Strings.signInWithFacebook,
-                          style: TextStyle(fontSize: 16, color: Colors.white)),
-                      Colors.blueAccent,
-                      () => {_loginWithFacebook()}),
-                  _buildButton(
-                      Image(
-                        image: AssetImage("assets/images/ic_email.png"),
-                        height: 30.0,
-                        width: 40.0,
+        child: Container(
+            //padding: EdgeInsets.all(16.0),
+            child: Column(
+              children: <Widget>[
+              Expanded(
+                  child :
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Container(
+                        margin: const EdgeInsets.all(8.0),
+                        child: Image(
+                            image: AssetImage("assets/images/app_icon.png"),
+                            height: 56.0,
+                            width: 56.0),
                       ),
-                      Text(Strings.signInWithEmail,
-                          style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      Colors.white,
-                      () => {_loginWithEmail(context)}),
-                ],
-              )),
-        ),
+                      Text(Strings.appName, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.0)),
+                    ],
+                  ),
+              ),
+                Container(
+                  child: Column(
+                    children: <Widget>[
+                      _buildButton(
+                          Image(
+                              image:
+                                  AssetImage("assets/images/ic_google.png"),
+                              height: 30.0,
+                              width: 40.0),
+                          Text(Strings.signInWithGoogle,
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.white)),
+                          Colors.blue,
+                          () => {_loginWithGoogle()}),
+                      _buildButton(
+                          Image(
+                              image:
+                                  AssetImage("assets/images/ic_facebook.png"),
+                              height: 30.0,
+                              width: 40.0),
+                          Text(Strings.signInWithFacebook,
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.white)),
+                          Colors.blueAccent,
+                          () => {_loginWithFacebook()}),
+                      _buildButton(
+                          Image(
+                            image: AssetImage("assets/images/ic_email.png"),
+                            height: 30.0,
+                            width: 40.0,
+                          ),
+                          Text(Strings.signInWithEmail,
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.grey)),
+                          Colors.white,
+                          () => {_loginWithEmail(context)}),
+                    ],
+                  ),
+                ),
+              ],
+            )),
       ),
     );
   }
@@ -148,13 +178,31 @@ class _LoginMethodPageState extends State<LoginMethodPage> {
     );
   }
 
-  Future<void> _handleSignIn() async {
+  Future<void> _handleSignInGoogle() async {
     try {
       await _googleSignIn.signIn();
     } catch (error) {
       print(error);
     }
   }
+
+  Future<void> _handleSignInFacebook() async {
+    final result = await facebookLogin.logIn(['email']);
+    final token = result.accessToken.token;
+    final graphResponse = await http.get(
+        'https://graph.facebook.com/v2.12/me?fields=name,email,picture.width(300).height(300)&access_token=${token}');
+    FacebookUser facebookUser =
+        FacebookUser.fromJson(jsonDecode(graphResponse.body));
+    //print("User profile fb: " + facebookUser.toString());
+    User user = User(facebookUser.name, facebookUser.email, "",
+        Constant.LOGIN_FB, facebookUser.picture.data.url);
+    print("User info: " + user.toString());
+    _saveCredential(user);
+    Future.delayed(Duration(seconds: 1), () {
+      Navigator.pushNamedAndRemoveUntil(context, "/list", (r) => false);
+    });
+  }
+
 /*
 
   Widget _test() {
@@ -221,11 +269,12 @@ class _LoginMethodPageState extends State<LoginMethodPage> {
 
   _loginWithGoogle() {
     print("Select login with Google");
-    _handleSignIn();
+    _handleSignInGoogle();
   }
 
   _loginWithFacebook() {
     print("Select login with Facebook");
+    _handleSignInFacebook();
   }
 
   _saveCredential(User user) {

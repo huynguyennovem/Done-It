@@ -49,6 +49,7 @@ class ListTodoState extends State<ListTodoPageful> {
 
   void _handleSignOut() async{
     await _googleSignIn.signOut();
+    Pref.logout();
     print("User Sign Out");
   }
 
@@ -239,7 +240,7 @@ class ListTodoState extends State<ListTodoPageful> {
   }
 
   Widget _buildListTodo(BuildContext context) {
-    print("list cats: " + listCats.length.toString());
+    //print("list cats: " + listCats.length.toString());
     return ListView.builder(
         itemBuilder: (context, index) {
           return _buildListTileExpand(listCats[index], context);

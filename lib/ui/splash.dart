@@ -31,7 +31,7 @@ class _SplashPagefulState extends State<SplashPageful> {
     _getSessionStt();
     Future.delayed(const Duration(seconds: 2), () {
       setState(() {
-        if (checkSessionValid) {
+        if (checkSessionValid != null && checkSessionValid) {
           Navigator.pushNamedAndRemoveUntil(context, "/list", (r) => false);
           Pref.extendSessionTime();
         } else {
@@ -65,8 +65,8 @@ class _SplashPagefulState extends State<SplashPageful> {
                 margin: const EdgeInsets.all(8.0),
                 child: Image(
                     image: AssetImage("assets/images/app_icon.png"),
-                    height: 48.0,
-                    width: 48.0),
+                    height: 56.0,
+                    width: 56.0),
               ),
               Text(Strings.appName, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.0)),
             ],
